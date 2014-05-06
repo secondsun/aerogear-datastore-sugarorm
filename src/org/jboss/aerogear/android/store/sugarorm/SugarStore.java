@@ -22,6 +22,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
     private static final String TAG = SugarStore.class.getSimpleName();
     private final Class<T> klass;
     private final String className;
+    private final String tableName;
     private SQLiteDatabase database;
 
     public SugarStore(Class<T> klass, Context context) {
@@ -29,6 +30,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
         this.context = context;
         this.klass = klass;
         this.className = klass.getSimpleName();
+        this.tableName = className;
     }
 
     @Override
@@ -83,7 +85,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     String getTableName() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return tableName;
     }
 
     @Override
@@ -93,14 +95,15 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     public void open(final Callback<SugarStore<T>> onReady) {
         final Looper looper = Looper.myLooper();
-
+        AsyncTask.THREAD_POOL_EXECUTOR.execute (
         new Runnable() {
             private Exception exception;
-
+            
             @Override
             public void run() {
                 try {
                     SugarStore.this.database = getWritableDatabase();
+                    
                 } catch (Exception e) {
                     this.exception = e;
                     Log.e(TAG, "There was an error loading the database", e);
@@ -125,7 +128,10 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                 }
 
             }
-        };
+        });
+        
+        
+        
     }
 
 }
