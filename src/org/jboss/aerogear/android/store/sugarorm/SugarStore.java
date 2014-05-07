@@ -1,5 +1,6 @@
 package org.jboss.aerogear.android.store.sugarorm;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
@@ -9,14 +10,21 @@ import android.util.Log;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.orm.QueryBuilder;
+import com.orm.StringUtil;
+import com.orm.SugarRecord;
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
+import org.jboss.aerogear.android.datamanager.IdGenerator;
 import org.jboss.aerogear.android.datamanager.Store;
 import org.jboss.aerogear.android.datamanager.StoreType;
+import org.jboss.aerogear.android.impl.datamanager.DefaultIdGenerator;
 
 public class SugarStore<T> extends SugarDb implements Store<T> {
 
@@ -27,7 +35,8 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
     private final String tableName;
     private SQLiteDatabase database;
     private static final Multimap<Class, SugarField> fields = LinkedListMultimap.create();
-    
+    private final IdGenerator idGenerator = new DefaultIdGenerator();
+
     public SugarStore(Class<T> klass, Context context) {
         super(context);
         this.context = context;
@@ -58,7 +67,59 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public void save(T item) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        List<SugarField> columns = getTableFields();
+        ContentValues values = new ContentValues(columns.size());
+        SugarField idField = null;
+        Object idValue = null;
+        for (SugarField column : columns) {
+
+            Class<?> columnType = column.getType();
+            try {
+                String columnName = StringUtil.toSQLName(column.getName());
+                Object columnValue = column.get(item);
+
+                if (column.isIdentityField()) {
+                    idField = column;
+                    idValue = column.get(item);
+                    if (idValue == null) {
+                        column.getJavaField().set(item, idGenerator.generate());
+                    }
+                }
+                
+                if (columnType.equals(Short.class) || columnType.equals(short.class)) {
+                    values.put(columnName, (Short) columnValue);
+                } else if (columnType.equals(Integer.class) || columnType.equals(int.class)) {
+                    values.put(columnName, (Integer) columnValue);
+                } else if (columnType.equals(Long.class) || columnType.equals(long.class)) {
+                    values.put(columnName, (Long) columnValue);
+                } else if (columnType.equals(Float.class) || columnType.equals(float.class)) {
+                    values.put(columnName, (Float) columnValue);
+                } else if (columnType.equals(Double.class) || columnType.equals(double.class)) {
+                    values.put(columnName, (Double) columnValue);
+                } else if (columnType.equals(Boolean.class) || columnType.equals(boolean.class)) {
+                    values.put(columnName, (Boolean) columnValue);
+                } else if (Date.class.equals(columnType)) {
+                    values.put(columnName, ((Date) column.get(this)).getTime());
+                } else if (Calendar.class.equals(columnType)) {
+                    values.put(columnName, ((Calendar) column.get(this)).getTimeInMillis());
+                } else {
+                    values.put(columnName, String.valueOf(columnValue));
+                }
+
+                
+
+            } catch (IllegalAccessException e) {
+                Log.e("Sugar", e.getMessage());
+            }
+        }
+
+        if (idValue == null) {
+            database.insert(getTableName(), null, values);
+        } else {
+            database.update(getTableName(), values, idField.getName() + " = ?", new String[]{String.valueOf(idValue)});
+        }
+
+        Log.i("Sugar", getClass().getSimpleName() + " saved : " + idValue);
     }
 
     @Override
@@ -78,7 +139,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        super.createTable(database);
     }
 
     @Override
@@ -92,16 +153,17 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
     }
 
     @Override
-            
+
     /**
      * Gets all of the fields which will be used to make the object/table.
-     * 
+     *
      * @return a list of fields with sugar metadata
-     * @throws IllegalArgumentException if one of the fields in the wrapped class are bad.  
+     * @throws IllegalArgumentException if one of the fields in the wrapped
+     * class are bad.
      */
     List<SugarField> getTableFields() {
         if (fields.get(klass) == null) {
-            synchronized(klass) {
+            synchronized (klass) {
                 for (Field field : klass.getFields()) {
                     if (!field.isAnnotationPresent(Ignore.class)) {
                         fields.put(klass, new SugarField(field));
@@ -114,43 +176,41 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     public void open(final Callback<SugarStore<T>> onReady) {
         final Looper looper = Looper.myLooper();
-        AsyncTask.THREAD_POOL_EXECUTOR.execute (
-        new Runnable() {
-            private Exception exception;
-            
-            @Override
-            public void run() {
-                try {
-                    SugarStore.this.database = getWritableDatabase();
-                    
-                } catch (Exception e) {
-                    this.exception = e;
-                    Log.e(TAG, "There was an error loading the database", e);
-                }
-                if (exception != null) {
-                    new Handler(looper).post(new Runnable() {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(
+                new Runnable() {
+                    private Exception exception;
 
-                        @Override
-                        public void run() {
-                            onReady.onFailure(exception);
+                    @Override
+                    public void run() {
+                        try {
+                            SugarStore.this.database = getWritableDatabase();
+
+                        } catch (Exception e) {
+                            this.exception = e;
+                            Log.e(TAG, "There was an error loading the database", e);
                         }
-                    });
-                } else {
-                    new Handler(looper).post(new Runnable() {
+                        if (exception != null) {
+                            new Handler(looper).post(new Runnable() {
 
-                        @Override
-                        public void run() {
-                            onReady.onSuccess(SugarStore.this);
+                                @Override
+                                public void run() {
+                                    onReady.onFailure(exception);
+                                }
+                            });
+                        } else {
+                            new Handler(looper).post(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    onReady.onSuccess(SugarStore.this);
+                                }
+                            });
+
                         }
-                    });
 
-                }
+                    }
+                });
 
-            }
-        });
-        
-        
-        
     }
 
 }
