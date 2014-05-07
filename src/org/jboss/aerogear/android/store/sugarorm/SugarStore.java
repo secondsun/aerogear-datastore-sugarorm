@@ -35,7 +35,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public StoreType getType() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return SugarStoreType.TYPE;
     }
 
     @Override
