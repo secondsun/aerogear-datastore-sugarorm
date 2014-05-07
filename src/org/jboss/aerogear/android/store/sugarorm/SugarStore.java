@@ -6,6 +6,9 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.Collection;
@@ -14,7 +17,6 @@ import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.datamanager.Store;
 import org.jboss.aerogear.android.datamanager.StoreType;
-import org.jboss.aerogear.android.impl.datamanager.SQLStore;
 
 public class SugarStore<T> extends SugarDb implements Store<T> {
 
@@ -24,7 +26,8 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
     private final String className;
     private final String tableName;
     private SQLiteDatabase database;
-
+    private static final Multimap<Class, SugarField> fields = LinkedListMultimap.create();
+    
     public SugarStore(Class<T> klass, Context context) {
         super(context);
         this.context = context;
@@ -89,8 +92,24 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
     }
 
     @Override
-    List<Field> getTableFields() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            
+    /**
+     * Gets all of the fields which will be used to make the object/table.
+     * 
+     * @return a list of fields with sugar metadata
+     * @throws IllegalArgumentException if one of the fields in the wrapped class are bad.  
+     */
+    List<SugarField> getTableFields() {
+        if (fields.get(klass) == null) {
+            synchronized(klass) {
+                for (Field field : klass.getFields()) {
+                    if (!field.isAnnotationPresent(Ignore.class)) {
+                        fields.put(klass, new SugarField(field));
+                    }
+                }
+            }
+        }
+        return Lists.newArrayList(fields.get(klass));
     }
 
     public void open(final Callback<SugarStore<T>> onReady) {
