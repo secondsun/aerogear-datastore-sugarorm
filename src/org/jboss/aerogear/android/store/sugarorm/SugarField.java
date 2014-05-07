@@ -10,6 +10,7 @@ public class SugarField {
     private final Field javaField;
     private final boolean isIdentityField;
     private final Class type;
+    private final Field subClassIdentityField;
 
     public SugarField(Field field) {
         if (ignoreField(field)) {
@@ -21,6 +22,7 @@ public class SugarField {
 
         if (javaField.getType().isPrimitive()) {
             type = javaField.getType();
+            subClassIdentityField = null;
         } else {
             Class<?> subClass = javaField.getType();
             Field subClassField = getRecordIdField(subClass);
@@ -28,10 +30,13 @@ public class SugarField {
             if (!subClassField.getType().isPrimitive()) {
                 throw new IllegalArgumentException("The RecordId of a non Primitive class must be a primitive");
             }
-            
+
             type = subClassField.getType();
+            subClassIdentityField = subClassField;
 
         }
+
+        javaField.setAccessible(true);
 
     }
 
@@ -47,7 +52,26 @@ public class SugarField {
         return type;
     }
 
-    
+    public String getName() {
+        return javaField.getName();
+    }
+
+    public Object get(Object instance) throws IllegalArgumentException, IllegalAccessException {
+        if (!isObjectField()) {
+            return javaField.get(instance);
+        } else {
+            Object subClassInstance = javaField.get(instance);
+            if (subClassInstance != null) {
+                return Scan.findIdValueIn(subClassInstance);
+            } else {
+                return null;
+            }
+        }
+    }
+
+    public boolean isObjectField() {
+        return !javaField.getType().isPrimitive();
+    }
     
     /**
      * If this field is annotated with the Ignore annotation
@@ -71,5 +95,7 @@ public class SugarField {
         }
         throw new RecordIdNotFoundException(klass);
     }
+
+    
 
 }
