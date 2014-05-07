@@ -23,20 +23,25 @@ abstract class SugarDb extends SQLiteOpenHelper {
         Log.i("Sugar", "create table");
         List<SugarField> fields = getTableFields();
         StringBuilder sb = new StringBuilder("CREATE TABLE ").append(getTableName()).append(
-                " ( ID INTEGER PRIMARY KEY AUTOINCREMENT ");
-
+                " (  ");
+        String comma = " ";
+        
         for (SugarField column : fields) {
             String columnName = StringUtil.toSQLName(column.getJavaField().getName());
             String columnType = QueryBuilder.getColumnType(column.getType());
 
             if (columnType != null) {
 
-                if (columnName.equalsIgnoreCase("Id")) {
-                    continue;
+                if (column.isIdentityField()) {
+                    sb.append(comma).append(columnName).append(" ").append(columnType).append(" PRIMARY KEY ");
                 }
-                sb.append(", ").append(columnName).append(" ").append(columnType);
+                sb.append(comma).append(columnName).append(" ").append(columnType);
             }
+            
+            comma = ", ";
+            
         }
+        
         sb.append(" ) ");
 
         Log.i("Sugar", "creating table " + getTableName());
