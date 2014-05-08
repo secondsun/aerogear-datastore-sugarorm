@@ -32,10 +32,11 @@ abstract class SugarDb extends SQLiteOpenHelper {
 
             if (columnType != null) {
 
-                if (column.isIdentityField()) {
-                    sb.append(comma).append(columnName).append(" ").append(columnType).append(" PRIMARY KEY ");
-                }
                 sb.append(comma).append(columnName).append(" ").append(columnType);
+                
+                if (column.isIdentityField()) {
+                    sb.append(" PRIMARY KEY ");
+                }
             }
             
             comma = ", ";

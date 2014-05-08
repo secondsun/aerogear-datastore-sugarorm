@@ -116,7 +116,11 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
         if (idValue == null) {
             database.insert(getTableName(), null, values);
         } else {
-            database.update(getTableName(), values, idField.getName() + " = ?", new String[]{String.valueOf(idValue)});
+            if (database.query(getTableName(), null, "ID = ?", new String[]{String.valueOf(idValue)}, null, null, null).moveToNext()) {
+                database.update(getTableName(), values, idField.getName() + " = ?", new String[]{String.valueOf(idValue)});
+            } else {
+                database.insert(getTableName(), null, values);
+            }
         }
 
         Log.i("Sugar", getClass().getSimpleName() + " saved : " + idValue);
@@ -139,7 +143,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        super.createTable(database);
+        super.createTable(db);
     }
 
     @Override
@@ -162,9 +166,9 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
      * class are bad.
      */
     List<SugarField> getTableFields() {
-        if (fields.get(klass) == null) {
+        if (fields.get(klass).isEmpty()) {
             synchronized (klass) {
-                for (Field field : klass.getFields()) {
+                for (Field field : klass.getDeclaredFields()) {
                     if (!field.isAnnotationPresent(Ignore.class)) {
                         fields.put(klass, new SugarField(field));
                     }
@@ -211,6 +215,10 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                     }
                 });
 
+    }
+
+    public void openSync() {
+        this.database = getWritableDatabase();
     }
 
 }
