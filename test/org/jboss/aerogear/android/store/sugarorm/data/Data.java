@@ -30,7 +30,7 @@ public class Data {
         
     }
 
-    public static final class SimpleData {
+    public static final class SimpleData implements Comparable<SimpleData>{
         @RecordId
         private Long id = 4l;
 
@@ -50,6 +50,11 @@ public class Data {
 
         public void setData(String data) {
             this.data = data;
+        }
+
+        @Override
+        public int compareTo(SimpleData o) {
+            return id.compareTo(o.id);
         }
         
         

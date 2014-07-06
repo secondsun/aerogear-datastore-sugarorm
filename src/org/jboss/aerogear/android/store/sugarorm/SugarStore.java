@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -58,7 +59,24 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public Collection<T> readAll() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        List<T> result = new ArrayList<>();
+
+        Cursor c = database.query(getTableName(), null, null, null, null, null, null);
+        try {
+            while (c.moveToNext()) {
+                result.add(inflate(c));
+            }
+        } catch (InstantiationException e) {
+            Log.e(TAG, e.getMessage(), e);
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            Log.e(TAG, e.getMessage(), e);
+            throw new RuntimeException(e);
+        } finally {
+            c.close();
+        }
+
+        return result;
     }
 
     @Override
@@ -352,9 +370,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                 return StringUtil.toSQLName(field.getName());
             }
         }
-        
+
         throw new IllegalStateException("There is not @RecordId field in class " + klass.getSimpleName() + ".");
     }
 }
-
-

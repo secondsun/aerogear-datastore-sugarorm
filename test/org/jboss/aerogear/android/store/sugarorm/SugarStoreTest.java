@@ -2,6 +2,10 @@ package org.jboss.aerogear.android.store.sugarorm;
 
 import android.content.Context;
 import android.database.Cursor;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.jboss.aerogear.android.store.sugarorm.data.Data;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
@@ -67,6 +71,36 @@ public class SugarStoreTest {
         assertEquals(4l, (long) data.getId());
                 
         
+    }
+    
+    @Test
+    public void testReadAll() throws InterruptedException {
+
+        Data.SimpleData data1 = new Data.SimpleData();
+        data1.setData("name1");
+        data1.setId(1l);
+        store.save(data1);
+        
+        Data.SimpleData data2 = new Data.SimpleData();
+        data2.setData("name2");
+        data2.setId(2l);
+        store.save(data2);
+        
+        Data.SimpleData data = store.read(4);
+        Assert.assertNull(data);
+        
+        Collection<Data.SimpleData> all = store.readAll();
+        List<Data.SimpleData> sorted = new ArrayList<>(all);
+        Collections.sort(sorted);
+        
+        assertEquals(2, all.size());
+        data1 = sorted.get(0);
+        data2 = sorted.get(1);
+        
+        assertEquals(1,(long) data1.getId());
+        assertEquals(2,(long) data2.getId());
+        assertEquals("name1",data1.getData());
+        assertEquals("name2",data2.getData());
     }
     
     @Test
