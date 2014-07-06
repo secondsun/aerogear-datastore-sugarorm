@@ -3,6 +3,7 @@ package org.jboss.aerogear.android.store.sugarorm;
 import android.content.Context;
 import android.database.Cursor;
 import org.jboss.aerogear.android.store.sugarorm.data.Data;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -44,7 +45,7 @@ public class SugarStoreTest {
         data.setData("name");
         store.save(data);
         
-        Cursor res = store.getReadableDatabase().rawQuery("select * from SimpleData", new String[0]);
+        Cursor res = store.getReadableDatabase().query(store.getTableName(), null, store.getIdentityColumn() + "=?", new String[]{String.valueOf(4)}, null, null, null, "1");
         assertTrue(res.moveToNext());
         assertEquals(4, res.getInt(0));
         assertEquals("name", res.getString(1));
@@ -53,6 +54,21 @@ public class SugarStoreTest {
         
     }
 
+    @Test
+    public void testRead() throws InterruptedException {
+
+        Data.SimpleData data = new Data.SimpleData();
+        data.setData("name");
+        store.save(data);
+        
+        data = store.read(4);
+        Assert.assertNotNull(data);
+        assertEquals("name", data.getData());
+        assertEquals(4l, (long) data.getId());
+                
+        
+    }
+    
     @Test
     public void testDefaultDBIsEmpty() {
         assertTrue(store.isEmpty());

@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,12 +13,18 @@ import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.orm.StringUtil;
+import com.orm.SugarRecord;
+import static com.orm.SugarRecord.findById;
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.datamanager.IdGenerator;
@@ -56,7 +63,26 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public T read(Serializable id) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        Cursor cursor = null;
+        try {
+            cursor = database.query(getTableName(), null, getIdentityColumn() + "=?", new String[]{String.valueOf(id)}, null, null, null, "1");
+            if (cursor.moveToNext()) {
+                T entity = inflate(cursor);
+                return entity;
+            } else {
+                return null;
+            }
+        } catch (InstantiationException ex) {
+            Log.e(TAG, ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        } catch (IllegalAccessException ex) {
+            Log.e(TAG, ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
     }
 
     @Override
@@ -84,7 +110,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                         column.getJavaField().set(item, idGenerator.generate());
                     }
                 }
-                
+
                 if (columnType.equals(Short.class) || columnType.equals(short.class)) {
                     values.put(columnName, (Short) columnValue);
                 } else if (columnType.equals(Integer.class) || columnType.equals(int.class)) {
@@ -104,8 +130,6 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                 } else {
                     values.put(columnName, String.valueOf(columnValue));
                 }
-
-                
 
             } catch (IllegalAccessException e) {
                 Log.e("Sugar", e.getMessage());
@@ -225,4 +249,112 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
         this.database = getWritableDatabase();
     }
 
+    private T inflate(Cursor cursor) throws InstantiationException, IllegalAccessException {
+        T entity = klass.newInstance();
+        Map<SugarField, Long> entities = new HashMap<SugarField, Long>();
+        List<SugarField> columns = getTableFields();
+        for (SugarField sugarField : columns) {
+            Field field = sugarField.getJavaField();
+            field.setAccessible(true);
+
+            Class fieldType = sugarField.getType();
+            String colName = StringUtil.toSQLName(sugarField.getName());
+
+            int columnIndex = cursor.getColumnIndex(colName);
+
+            if (cursor.isNull(columnIndex)) {
+                continue;
+            }
+
+            if (colName.equalsIgnoreCase("id")) {
+                long cid = cursor.getLong(columnIndex);
+                field.set(entity, Long.valueOf(cid));
+            } else if (fieldType.equals(long.class) || fieldType.equals(Long.class)) {
+                field.set(entity,
+                        cursor.getLong(columnIndex));
+            } else if (fieldType.equals(String.class)) {
+                String val = cursor.getString(columnIndex);
+                field.set(entity, val != null && val.equals("null") ? null : val);
+            } else if (fieldType.equals(double.class) || fieldType.equals(Double.class)) {
+                field.set(entity,
+                        cursor.getDouble(columnIndex));
+            } else if (fieldType.equals(boolean.class) || fieldType.equals(Boolean.class)) {
+                field.set(entity,
+                        cursor.getString(columnIndex).equals("1"));
+            } else if (sugarField.getType().getName().equals("[B")) {
+                field.set(entity,
+                        cursor.getBlob(columnIndex));
+            } else if (fieldType.equals(int.class) || fieldType.equals(Integer.class)) {
+                field.set(entity,
+                        cursor.getInt(columnIndex));
+            } else if (fieldType.equals(float.class) || fieldType.equals(Float.class)) {
+                field.set(entity,
+                        cursor.getFloat(columnIndex));
+            } else if (fieldType.equals(short.class) || fieldType.equals(Short.class)) {
+                field.set(entity,
+                        cursor.getShort(columnIndex));
+            } else if (fieldType.equals(Timestamp.class)) {
+                long l = cursor.getLong(columnIndex);
+                field.set(entity, new Timestamp(l));
+            } else if (fieldType.equals(Date.class)) {
+                long l = cursor.getLong(columnIndex);
+                field.set(entity, new Date(l));
+            } else if (fieldType.equals(Calendar.class)) {
+                long l = cursor.getLong(columnIndex);
+                Calendar c = Calendar.getInstance();
+                c.setTimeInMillis(l);
+                field.set(entity, c);
+            } else if (Enum.class.isAssignableFrom(fieldType)) {
+                try {
+                    Method valueOf = sugarField.getType().getMethod("valueOf", String.class);
+                    String strVal = cursor.getString(columnIndex);
+                    Object enumVal = valueOf.invoke(sugarField.getType(), strVal);
+                    field.set(entity, enumVal);
+                } catch (Exception e) {
+                    Log.e(TAG, "Enum cannot be read from Sqlite3 database. Please check the type of field " + sugarField.getName());
+                    throw new RuntimeException(e);
+                }
+            } else if (SugarRecord.class.isAssignableFrom(fieldType)) {
+                long id = cursor.getLong(columnIndex);
+                if (id > 0) {
+                    entities.put(sugarField, id);
+                } else {
+                    field.set(entity, null);
+                }
+            } else {
+                Log.e(TAG, "Class cannot be read from Sqlite3 database. Please check the type of field " + sugarField.getName() + "(" + sugarField.getType().getName() + ")");
+                throw new RuntimeException("Class cannot be read from Sqlite3 database. Please check the type of field " + sugarField.getName() + "(" + sugarField.getType().getName() + ")");
+            }
+
+        }
+
+        for (SugarField f : entities.keySet()) {
+            try {
+                f.getJavaField().set(entity, findById((Class<? extends SugarRecord<?>>) f.getType(),
+                        entities.get(f)));
+            } catch (SQLiteException e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }
+        return entity;
+    }
+
+    protected String getIdentityColumn() {
+        for (SugarField field : getTableFields()) {
+            if (field.isIdentityField()) {
+                return StringUtil.toSQLName(field.getName());
+            }
+        }
+        
+        throw new IllegalStateException("There is not @RecordId field in class " + klass.getSimpleName() + ".");
+    }
 }
+
+
