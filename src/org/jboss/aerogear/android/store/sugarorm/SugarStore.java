@@ -2,6 +2,7 @@ package org.jboss.aerogear.android.store.sugarorm;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -10,9 +11,7 @@ import android.util.Log;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.orm.QueryBuilder;
 import com.orm.StringUtil;
-import com.orm.SugarRecord;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.Calendar;
@@ -138,7 +137,12 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public boolean isEmpty() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        Cursor q = database.query(getTableName(), null, null, null, null, null, null);
+        try {
+            return !q.moveToNext();
+        } finally {
+            q.close();
+        }
     }
 
     @Override

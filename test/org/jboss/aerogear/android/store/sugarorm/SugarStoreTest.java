@@ -4,6 +4,9 @@ import android.content.Context;
 import android.database.Cursor;
 import org.jboss.aerogear.android.store.sugarorm.data.Data;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertTrue;
 import org.junit.Assume;
 import org.junit.Before;
@@ -46,7 +49,13 @@ public class SugarStoreTest {
         assertEquals(4, res.getInt(0));
         assertEquals("name", res.getString(1));
         
+        assertFalse(store.isEmpty());
+        
     }
 
+    @Test
+    public void testDefaultDBIsEmpty() {
+        assertTrue(store.isEmpty());
+    }
     
 }
