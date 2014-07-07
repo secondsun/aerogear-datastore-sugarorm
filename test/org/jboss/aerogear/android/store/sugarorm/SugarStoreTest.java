@@ -158,6 +158,23 @@ public class SugarStoreTest {
         
     }
     
+    
+    @Test
+    public void testReset() throws InterruptedException, JSONException {
+
+        for (int i = 0; i < 100; i++) {
+            Data.SimpleData data1 = new Data.SimpleData();
+            data1.setData(String.format("name%d", i));
+            data1.setId((long)i);
+            store.save(data1);
+        }
+        
+        store.reset();
+        assertEquals(0, store.readAll().size());
+        Assert.assertNull(store.read(1));
+        
+    }
+    
     @Test
     public void testDefaultDBIsEmpty() {
         assertTrue(store.isEmpty());
