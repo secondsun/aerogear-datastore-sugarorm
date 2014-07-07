@@ -221,7 +221,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public void remove(Serializable id) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        database.delete(getTableName(), String.format("%s = ?", getIdentityColumn()), new String[] {id.toString()});
     }
 
     @Override
