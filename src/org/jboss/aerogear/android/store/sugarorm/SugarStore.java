@@ -24,14 +24,18 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.datamanager.IdGenerator;
 import org.jboss.aerogear.android.datamanager.Store;
 import org.jboss.aerogear.android.datamanager.StoreType;
 import org.jboss.aerogear.android.impl.datamanager.DefaultIdGenerator;
+import org.json.JSONObject;
 
 public class SugarStore<T> extends SugarDb implements Store<T> {
 
@@ -59,7 +63,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public Collection<T> readAll() {
-        List<T> result = new ArrayList<>();
+        List<T> result = new ArrayList<T>();
 
         Cursor c = database.query(getTableName(), null, null, null, null, null, null);
         try {
@@ -105,7 +109,50 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public List<T> readWithFilter(ReadFilter filter) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        StringBuilder queryBuilder = new StringBuilder("");
+        JSONObject where = filter.getWhere();
+        ArrayList<String> arguments = new ArrayList<String>(filter.getWhere().length());
+        StringBuilder limit = new StringBuilder();
+
+        if (where != null) {
+            Iterator keysIter = where.keys();
+            while (keysIter.hasNext()) {
+                String key = keysIter.next().toString();
+                queryBuilder.append(key).append(" = ?");
+                arguments.add(where.optString(key));
+            }
+        }
+
+        if (filter.getOffset() != null) {
+            limit.append(filter.getOffset()).append(", ");
+        }
+
+        if (filter.getLimit() != null) {
+            limit.append(filter.getLimit());
+        }
+
+        Cursor cursor = database.query(getTableName(), null, queryBuilder.toString(), arguments.toArray(new String[arguments.size()]), null, null, null, limit.toString());
+
+        try {
+            ArrayList<T> toReturn = new ArrayList<T>();
+            while (cursor.moveToNext()) {
+                try {
+                    toReturn.add(inflate(cursor));
+                } catch (InstantiationException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    throw new RuntimeException(e);
+                } catch (IllegalAccessException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    throw new RuntimeException(e);
+                }
+            }
+            return toReturn;
+        } finally {
+            cursor.close();
+        }
+
+        
+
     }
 
     @Override

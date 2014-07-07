@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.store.sugarorm.data.Data;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertEquals;
@@ -90,7 +93,7 @@ public class SugarStoreTest {
         Assert.assertNull(data);
         
         Collection<Data.SimpleData> all = store.readAll();
-        List<Data.SimpleData> sorted = new ArrayList<>(all);
+        List<Data.SimpleData> sorted = new ArrayList<Data.SimpleData>(all);
         Collections.sort(sorted);
         
         assertEquals(2, all.size());
@@ -101,6 +104,41 @@ public class SugarStoreTest {
         assertEquals(2,(long) data2.getId());
         assertEquals("name1",data1.getData());
         assertEquals("name2",data2.getData());
+    }
+    
+    @Test
+    public void testReadFilter() throws InterruptedException, JSONException {
+
+        for (int i = 0; i < 100; i++) {
+            Data.SimpleData data1 = new Data.SimpleData();
+            data1.setData(String.format("name%d", i));
+            data1.setId((long)i);
+            store.save(data1);
+        }
+        
+        ReadFilter filter = new ReadFilter();
+        filter.setLimit(20);
+        
+        List<Data.SimpleData> results = store.readWithFilter(filter);
+        assertEquals(20, results.size());
+        
+        filter = new ReadFilter();
+        filter.setLimit(100);
+        filter.setOffset(80);
+        
+        results = store.readWithFilter(filter);
+        assertEquals(20, results.size());
+        
+        
+        filter = new ReadFilter();
+        filter.setWhere(new JSONObject("{\"data\":\"name1\"}"));
+        
+        results = store.readWithFilter(filter);
+        assertEquals(1, results.size());
+        assertEquals(1l,(long) results.get(0).getId());
+        
+        
+        
     }
     
     @Test
