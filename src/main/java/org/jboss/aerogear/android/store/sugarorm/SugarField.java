@@ -1,9 +1,11 @@
 package org.jboss.aerogear.android.store.sugarorm;
 
-import com.google.common.collect.Sets;
+
 import java.lang.reflect.Field;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 import org.jboss.aerogear.android.RecordId;
 import org.jboss.aerogear.android.impl.reflection.RecordIdNotFoundException;
@@ -16,16 +18,18 @@ public class SugarField {
     private final Class type;
     private final Field subClassIdentityField;
 
-    private static final Set SUPPORTED_TYPES = Sets.newHashSet(
-            Short.class, short.class,
+    private static final Set SUPPORTED_TYPES;
+    static {
+        SUPPORTED_TYPES = new HashSet();
+        Collections.addAll(SUPPORTED_TYPES, Short.class, short.class,
             Integer.class, int.class,
             Long.class, long.class,
             Float.class, float.class,
             Double.class, double.class,
             Boolean.class, boolean.class,
             Date.class, String.class, CharSequence.class,
-            Calendar.class
-    );
+            Calendar.class);
+    }
 
     public SugarField(Field field) {
         if (ignoreField(field)) {

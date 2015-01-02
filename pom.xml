@@ -21,14 +21,14 @@
     <groupId>org.jboss.aerogear</groupId>
     <artifactId>aerogear-android-datamanager-sugarorm</artifactId>
     <version>0.1-SNAPSHOT</version>
-    <packaging>apklib</packaging>
+    <packaging>aar</packaging>
     <name>AeroGear Android SugarORM DataStore</name>
     <url>http://aerogear.org</url>
 
     <parent>
         <groupId>org.jboss.aerogear</groupId>
         <artifactId>aerogear-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.10</version>
     </parent>
 
     <licenses>
@@ -70,7 +70,7 @@
         <java.version>1.7</java.version>
         <maven.compiler.plugin.version>2.3.2</maven.compiler.plugin.version>
         <maven.javadoc.plugin.version>2.9.1</maven.javadoc.plugin.version>
-        <maven.android.plugin.verson>3.8.0</maven.android.plugin.verson>
+        <maven.android.plugin.verson>4.0.0</maven.android.plugin.verson>
         <builder.helper.plugin.version>1.7</builder.helper.plugin.version>
 
         <!-- Android configs -->
@@ -133,19 +133,35 @@
         
         <dependency>
             <groupId>org.jboss.aerogear</groupId>
-            <artifactId>aerogear-android</artifactId>
-            <version>1.4.0</version>
-            <type>apklib</type>
+            <artifactId>aerogear-android-store</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <type>aar</type>
         </dependency>
         
         <dependency>
             <groupId>org.jboss.aerogear</groupId>
-            <artifactId>aerogear-android</artifactId>
-            <version>1.4.0</version>
+            <artifactId>aerogear-android-store</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
             <type>jar</type>
             <scope>provided</scope>
         </dependency>        
-        
+
+        <dependency>
+            <groupId>org.jboss.aerogear</groupId>
+            <artifactId>aerogear-android-core</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <type>aar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.aerogear</groupId>
+            <artifactId>aerogear-android-core</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <type>jar</type>
+            <scope>provided</scope>
+        </dependency>
+
+                        
         <dependency>
             <groupId>org.robolectric</groupId>
             <artifactId>robolectric</artifactId>
@@ -157,12 +173,10 @@
     </dependencies>
 
     <build>
-        <sourceDirectory>src</sourceDirectory>
-        <testSourceDirectory>test</testSourceDirectory>
         <pluginManagement>
             <plugins>
                 <plugin>
-                    <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+                     <groupId>com.simpligility.maven.plugins</groupId>
                     <artifactId>android-maven-plugin</artifactId>
                     <version>${maven.android.plugin.verson}</version>
                     <extensions>true</extensions>
@@ -201,8 +215,9 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+                <groupId>com.simpligility.maven.plugins</groupId>
                 <artifactId>android-maven-plugin</artifactId>
+                <extensions>true</extensions>
                 <configuration>
                     <run>
                         <debug>${android.debug}</debug>
@@ -223,15 +238,6 @@
                         </jvmArguments>
                     </dex>
                 </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>aar</goal>
-                            <goal>apklib</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -245,10 +251,6 @@
                         </goals>
                         <configuration>
                             <artifacts>
-                                <artifact>
-                                    <type>aar</type>
-                                    <file>${project.build.directory}/${project.build.finalName}.aar</file>
-                                </artifact>
                                 <artifact>
                                     <type>jar</type>
                                     <file>${project.build.directory}/${project.build.finalName}.jar</file>

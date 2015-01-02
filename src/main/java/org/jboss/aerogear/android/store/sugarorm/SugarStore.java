@@ -9,9 +9,6 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import com.google.common.collect.LinkedListMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
 import com.orm.StringUtil;
 import com.orm.SugarRecord;
 import static com.orm.SugarRecord.findById;
@@ -27,8 +24,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.datamanager.IdGenerator;
@@ -40,12 +35,13 @@ import org.json.JSONObject;
 public class SugarStore<T> extends SugarDb implements Store<T> {
 
     private final Context context;
+    private static Map<Class, SugarStore> STORE_MAP = new HashMap<Class, SugarStore>();
     private static final String TAG = SugarStore.class.getSimpleName();
     private final Class<T> klass;
     private final String className;
     private final String tableName;
     private SQLiteDatabase database;
-    private static final Multimap<Class, SugarField> fields = LinkedListMultimap.create();
+    private static final Map<Class, ArrayList<SugarField>> fields = new HashMap<Class, ArrayList<SugarField>>();
     private final IdGenerator idGenerator = new DefaultIdGenerator();
 
     public SugarStore(Class<T> klass, Context context) {
@@ -151,8 +147,6 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
             cursor.close();
         }
 
-        
-
     }
 
     @Override
@@ -221,7 +215,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     @Override
     public void remove(Serializable id) {
-        database.delete(getTableName(), String.format("%s = ?", getIdentityColumn()), new String[] {id.toString()});
+        database.delete(getTableName(), String.format("%s = ?", getIdentityColumn()), new String[]{id.toString()});
     }
 
     @Override
@@ -259,16 +253,20 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
      * class are bad.
      */
     List<SugarField> getTableFields() {
-        if (fields.get(klass).isEmpty()) {
+
+        if (fields.get(klass) == null || fields.get(klass).isEmpty()) {
             synchronized (klass) {
+                if (fields.get(klass) == null) {
+                    fields.put(klass, new ArrayList<SugarField>());
+                }
                 for (Field field : klass.getDeclaredFields()) {
                     if (!field.isAnnotationPresent(Ignore.class)) {
-                        fields.put(klass, new SugarField(field));
+                        fields.get(klass).add(new SugarField(field));
                     }
                 }
             }
         }
-        return Lists.newArrayList(fields.get(klass));
+        return new ArrayList<SugarField>(fields.get(klass));
     }
 
     public void open(final Callback<SugarStore<T>> onReady) {
@@ -280,7 +278,7 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
                     @Override
                     public void run() {
                         try {
-                            SugarStore.this.database = getWritableDatabase();
+                            openSync();
 
                         } catch (Exception e) {
                             this.exception = e;
@@ -312,6 +310,9 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
     public void openSync() {
         this.database = getWritableDatabase();
+        for (SugarField field : getTableFields()) {
+            if (field.getJavaField().isAnnotationPresent(collecion mpping annotation))
+        }
     }
 
     private T inflate(Cursor cursor) throws InstantiationException, IllegalAccessException {
@@ -420,4 +421,28 @@ public class SugarStore<T> extends SugarDb implements Store<T> {
 
         throw new IllegalStateException("There is not @RecordId field in class " + klass.getSimpleName() + ".");
     }
+
+    @Override
+    public void save(Collection<T> items) {
+        try {
+            database.beginTransaction();
+            
+            for (T item : items) {
+                save(item);
+            }
+            
+            database.setTransactionSuccessful();
+        } finally {
+            database.endTransaction();
+        }
+
+    }
+    
+    private <K extends Object> SugarStore<K> getStore(Class<K> klass) {
+        if (STORE_MAP.get(klass) == null) {
+            throw new IllegalStateException(klass + " was not detected and initialized");
+        }
+        return STORE_MAP.get(klass);
+    }
+    
 }
